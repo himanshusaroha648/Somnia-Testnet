@@ -39,6 +39,7 @@ A terminal-based UI application for interacting with the Somnia network testnet.
 1. Clone the repository:
 ```bash
 git clone https://github.com/himanshusaroha648/Somnia-Testnet.git
+cd Somnia-Testnet
 ```
 
 2. Install dependencies:
