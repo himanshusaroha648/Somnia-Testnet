@@ -1,6 +1,16 @@
-# 🌟 Somnia Auto Swap Bot
+# 🌟 Somnia Auto Bot
+
+> **💰 Want to buy Somnia Testnet Faucet? Message me on Telegram: [@himanshusaroha001](https://t.me/himanshusaroha001)**
 
 A terminal-based UI application for interacting with the Somnia network testnet. This bot automates various operations including token swaps, transfers, and token creation on the Somnia network.
+
+## 💧 Faucet Information
+
+- Need Somnia testnet tokens? 
+- Want to participate in the testnet?
+- Looking to buy PING/PONG tokens?
+
+👉 **Contact me on Telegram: [@himanshusaroha001](https://t.me/himanshusaroha001) to buy Somnia faucet tokens!**
 
 ## ✨ Features
 
@@ -49,3 +59,27 @@ node main.js
 ```
 
 ## 💫 Usage
+
+- Use arrow keys to navigate the menu
+- Press Enter to select an option
+- Press ESC or Q to exit
+- Use "Stop All Tasks" to halt any running operations
+
+## 🌐 Contact & Support
+
+Need help or want to buy Somnia testnet tokens? 
+- 💬 Telegram: [@himanshusaroha001](https://t.me/himanshusaroha001)
+- 💰 Available for faucet token sales
+- ❓ Get help with bot setup and configuration
+
+## ⚠️ Disclaimer
+
+This is a testnet bot. Please use it responsibly and be aware of the network's limitations and requirements.
+
+## 👨‍💻 Developer
+
+Developed by HIMANSHU SAROHA
+
+## 📝 License
+
+This project is open source and available under the MIT License.
