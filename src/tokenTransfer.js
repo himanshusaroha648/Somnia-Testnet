@@ -70,7 +70,7 @@ function readPrivateKeys() {
 }
 
 // Function to process a single wallet
-export async function processWallet(wallet, current = 0, total = 0) {
+export async function processWallet(wallet, amount, current = 0, total = 0) {
     try {
         const progressInfo = total > 0 ? ` [${current}/${total}]` : '';
         process.emit('transfer:log', `🔍 Checking Balance for Wallet: ${wallet.address}${progressInfo}`);
@@ -80,23 +80,24 @@ export async function processWallet(wallet, current = 0, total = 0) {
         process.emit('transfer:log', `Balance: ${balanceInEth} ETH${progressInfo}`);
         
         const randomToAddress = generateRandomAddress();
-        const randomAmount = (Math.random() * 0.004) + 0.001; // 0.001-0.005 ETH
+        const sendAmount = amount || (Math.random() * 0.004 + 0.001).toFixed(6); // Use provided amount or random
 
         const tx = {
             to: randomToAddress,
-            value: ethers.parseEther(randomAmount.toFixed(6)),
+            value: ethers.parseEther(sendAmount.toString()),
             gasLimit: 21000,
             maxFeePerGas: ethers.parseUnits("10", "gwei"),
             maxPriorityFeePerGas: ethers.parseUnits("5", "gwei")
         };
 
+        process.emit('transfer:log', `Sending ${sendAmount} tokens${progressInfo}`);
         const transaction = await wallet.sendTransaction(tx);
-        process.emit('transfer:success', `Transaction sent for ${wallet.address}${progressInfo}`);
+        process.emit('transfer:success', `Transaction sent: ${sendAmount} tokens${progressInfo}`);
         
         const receipt = await transaction.wait();
-        process.emit('transfer:success', `Transaction confirmed for ${wallet.address}${progressInfo}`);
+        process.emit('transfer:success', `Transaction confirmed: ${sendAmount} tokens${progressInfo}`);
         
-        return true;
+        return transaction;
     } catch (error) {
         if (error.message.includes('insufficient funds')) {
             process.emit('transfer:error', `Insufficient funds for ${wallet.address}${progressInfo}`);
@@ -110,7 +111,7 @@ export async function processWallet(wallet, current = 0, total = 0) {
         } else {
             process.emit('transfer:error', `Error processing wallet: ${error.message}${progressInfo}`);
         }
-        return false;
+        throw error;
     }
 }
 
