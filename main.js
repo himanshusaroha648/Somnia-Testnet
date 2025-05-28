@@ -425,24 +425,38 @@ async function autoAll() {
             try {
                 // 1. Create Random Token
                 log("1. Creating random token...");
-                try {
-                    log("Sending token creation transaction...", 'info');
-                    const tokenAddress = await createTokenAuto();
-                    if (tokenAddress) {
-                        log(`✅ Token created successfully at: ${formatTxHash(tokenAddress)}`, 'success');
-                    } else {
-                        log("❌ Token creation failed: No address returned", 'error');
+                let tokenCreated = false;
+                let retryCount = 0;
+                const maxRetries = 3;
+
+                while (!tokenCreated && retryCount < maxRetries) {
+                    try {
+                        log(`Attempt ${retryCount + 1} to create token...`, 'info');
+                        const tokenAddress = await createTokenAuto();
+                        if (tokenAddress) {
+                            log(`✅ Token created successfully at: ${formatTxHash(tokenAddress)}`, 'success');
+                            tokenCreated = true;
+                        } else {
+                            throw new Error("No token address returned");
+                        }
+                    } catch (error) {
+                        retryCount++;
+                        if (retryCount < maxRetries) {
+                            log(`❌ Token creation attempt ${retryCount} failed: ${error.message}`, 'error');
+                            log("Retrying in 5 seconds...", 'info');
+                            await delay(5000);
+                        } else {
+                            log("❌ Token creation failed after 3 attempts. Continuing with swaps...", 'error');
+                        }
                     }
-                    await delay(3000);
-                } catch (error) {
-                    log(`❌ Token creation failed: ${error.message}`, 'error');
-                    log("Continuing with swaps and sends...", 'info');
-                    await delay(2000);
                 }
+
+                await delay(3000);
 
                 // 2. Auto Swaps
                 log("2. Starting auto swaps...");
                 const numSwaps = Math.floor(Math.random() * 3) + 5; // 5-7 swaps
+                let successfulSwaps = 0;
                 
                 for (let j = 0; j < numSwaps; j++) {
                     if (!autoAllRunning) break;
@@ -454,6 +468,7 @@ async function autoAll() {
                         
                         await swapTokens(fromToken, toToken, wallet, j + 1, numSwaps);
                         await updateWalletInfo();
+                        successfulSwaps++;
                         
                         // Delay between swaps: 4-6 seconds
                         await delay(Math.random() * 2000 + 4000);
@@ -463,9 +478,12 @@ async function autoAll() {
                     }
                 }
 
+                log(`Completed ${successfulSwaps}/${numSwaps} swaps successfully`, 'info');
+
                 // 3. Auto Sends
                 log("3. Starting auto sends...");
                 const numSends = Math.floor(Math.random() * 3) + 3; // 3-5 sends
+                let successfulSends = 0;
                 
                 for (let k = 0; k < numSends; k++) {
                     if (!autoAllRunning) break;
@@ -476,6 +494,7 @@ async function autoAll() {
                         const tx = await processWallet(wallet, amount, k + 1, numSends);
                         log(`TX: ${formatTxHash(tx.hash)}`, 'info');
                         await updateWalletInfo();
+                        successfulSends++;
                         
                         // Delay between sends: 3-5 seconds
                         await delay(Math.random() * 2000 + 3000);
@@ -485,6 +504,7 @@ async function autoAll() {
                     }
                 }
 
+                log(`Completed ${successfulSends}/${numSends} sends successfully`, 'info');
                 log(`✅ Completed Auto All for wallet ${i + 1}/${totalWallets}`, 'success');
                 await delay(5000);
 
