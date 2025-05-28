@@ -314,8 +314,16 @@ menuBox.on('select', async (item) => {
                         try {
                             // Random amount between 0.001 and 0.005
                             const amount = (Math.random() * 0.004 + 0.001).toFixed(6);
+                            log(`[${i + 1}/${numSends}] Sending ${amount} tokens...`, 'info');
                             const tx = await processWallet(wallet, amount, i + 1, numSends);
-                            log(`Transaction Hash: ${tx.hash}`, 'info');
+                            
+                            // Add check before logging tx hash
+                            if (tx && tx.hash) {
+                                log(`Transaction Hash: ${tx.hash}`, 'info');
+                            } else {
+                                log(`Transaction sent, but hash not available or invalid transaction object received.`, 'error');
+                            }
+                            
                             await updateWalletInfo();
                             
                             // Add delay between sends (1-3 seconds)
@@ -492,7 +500,14 @@ async function autoAll() {
                         const amount = (Math.random() * 0.004 + 0.001).toFixed(6); // 0.001-0.005
                         log(`[${k + 1}/${numSends}] Sending ${amount} tokens...`, 'info');
                         const tx = await processWallet(wallet, amount, k + 1, numSends);
-                        log(`TX: ${formatTxHash(tx.hash)}`, 'info');
+                        
+                        // Add check before logging tx hash
+                        if (tx && tx.hash) {
+                            log(`TX: ${formatTxHash(tx.hash)}`, 'info');
+                        } else {
+                            log(`Transaction sent, but hash not available or invalid transaction object received.`, 'error');
+                        }
+                        
                         await updateWalletInfo();
                         successfulSends++;
                         
