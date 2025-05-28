@@ -228,9 +228,9 @@ async function initialize() {
 
         if (privateKeys.length === 0) {
             log("Please add PRIVATE_KEY entries in the .env file", 'error');
-            return;
-        }
-
+                return;
+            }
+            
         // Initialize all wallets
         wallets = privateKeys.map(pk => {
             // Add 0x prefix if missing
@@ -314,7 +314,8 @@ menuBox.on('select', async (item) => {
                         try {
                             // Random amount between 0.001 and 0.005
                             const amount = (Math.random() * 0.004 + 0.001).toFixed(6);
-                            await processWallet(wallet, amount, i + 1, numSends);
+                            const tx = await processWallet(wallet, amount, i + 1, numSends);
+                            log(`Transaction Hash: ${tx.hash}`, 'info');
                             await updateWalletInfo();
                             
                             // Add delay between sends (1-3 seconds)
@@ -425,55 +426,71 @@ async function autoAll() {
                 // 1. Create Random Token
                 log("1. Creating random token...");
                 try {
+                    log("Sending token creation transaction...", 'info');
                     const tokenAddress = await createTokenAuto();
-                    log(`✅ Token created at: ${formatTxHash(tokenAddress)}`, 'success');
-                    await delay(2000);
+                    if (tokenAddress) {
+                        log(`✅ Token created successfully at: ${formatTxHash(tokenAddress)}`, 'success');
+                    } else {
+                        log("❌ Token creation failed: No address returned", 'error');
+                    }
+                    await delay(3000);
                 } catch (error) {
                     log(`❌ Token creation failed: ${error.message}`, 'error');
+                    log("Continuing with swaps and sends...", 'info');
+                    await delay(2000);
                 }
 
                 // 2. Auto Swaps
                 log("2. Starting auto swaps...");
-                const numSwaps = Math.floor(Math.random() * 6) + 5; // 5-10 swaps
+                const numSwaps = Math.floor(Math.random() * 3) + 5; // 5-7 swaps
                 
                 for (let j = 0; j < numSwaps; j++) {
                     if (!autoAllRunning) break;
                     
-                    // Alternate between PING->PONG and PONG->PING
-                    const fromToken = j % 2 === 0 ? PING_TOKEN : PONG_TOKEN;
-                    const toToken = j % 2 === 0 ? PONG_TOKEN : PING_TOKEN;
-                    
                     try {
+                        // Alternate between PING->PONG and PONG->PING
+                        const fromToken = j % 2 === 0 ? PING_TOKEN : PONG_TOKEN;
+                        const toToken = j % 2 === 0 ? PONG_TOKEN : PING_TOKEN;
+                        
                         await swapTokens(fromToken, toToken, wallet, j + 1, numSwaps);
                         await updateWalletInfo();
-                        await delay(Math.random() * 3000 + 2000);
+                        
+                        // Delay between swaps: 4-6 seconds
+                        await delay(Math.random() * 2000 + 4000);
                     } catch (error) {
                         log(`❌ Swap ${j + 1}/${numSwaps} failed: ${error.message}`, 'error');
+                        await delay(3000);
                     }
                 }
 
                 // 3. Auto Sends
                 log("3. Starting auto sends...");
-                const numSends = Math.floor(Math.random() * 5) + 4; // 4-8 sends
+                const numSends = Math.floor(Math.random() * 3) + 3; // 3-5 sends
                 
                 for (let k = 0; k < numSends; k++) {
                     if (!autoAllRunning) break;
                     
                     try {
                         const amount = (Math.random() * 0.004 + 0.001).toFixed(6); // 0.001-0.005
-                        await processWallet(wallet, amount, k + 1, numSends);
+                        log(`[${k + 1}/${numSends}] Sending ${amount} tokens...`, 'info');
+                        const tx = await processWallet(wallet, amount, k + 1, numSends);
+                        log(`TX: ${formatTxHash(tx.hash)}`, 'info');
                         await updateWalletInfo();
-                        await delay(Math.random() * 2000 + 1000);
+                        
+                        // Delay between sends: 3-5 seconds
+                        await delay(Math.random() * 2000 + 3000);
                     } catch (error) {
                         log(`❌ Send ${k + 1}/${numSends} failed: ${error.message}`, 'error');
+                        await delay(3000);
                     }
                 }
 
                 log(`✅ Completed Auto All for wallet ${i + 1}/${totalWallets}`, 'success');
-                await delay(3000);
+                await delay(5000);
 
             } catch (error) {
                 log(`❌ Error in Auto All for wallet ${i + 1}/${totalWallets}: ${error.message}`, 'error');
+                await delay(5000);
             }
         }
         
