@@ -9,6 +9,9 @@ import fetch from 'node-fetch';
 import chalk from 'chalk';
 import readline from 'readline';
 
+// Token addresses
+const PING_TOKEN = "0x33e7fab0a8a5da1a923180989bd617c9c2d1c493";
+
 // === Only RPC details changed here ===
 const rpcProviders = [
   new JsonRpcProvider('https://dream-rpc.somnia.network'), // Somnia Testnet RPC
@@ -69,50 +72,94 @@ function readPrivateKeys() {
         : [];
 }
 
-// Function to process a single wallet
-export async function processWallet(wallet, amount, current = 0, total = 0) {
+// Function to get random recipient
+function getRandomRecipient() {
+    return generateRandomAddress();
+}
+
+// Function to approve tokens
+async function approveTokens(wallet) {
     try {
-        const progressInfo = total > 0 ? ` [${current}/${total}]` : '';
-        process.emit('transfer:log', `🔍 Checking Balance for Wallet: ${wallet.address}${progressInfo}`);
-        
-        const balance = await provider().getBalance(wallet.address);
-        const balanceInEth = ethers.formatEther(balance);
-        process.emit('transfer:log', `Balance: ${balanceInEth} ETH${progressInfo}`);
-        
-        const randomToAddress = generateRandomAddress();
-        const sendAmount = amount || (Math.random() * 0.004 + 0.001).toFixed(6); // Use provided amount or random
+        const tokenContract = new ethers.Contract(
+            PING_TOKEN,
+            [
+                "function approve(address spender, uint256 amount) public returns (bool)",
+                "function allowance(address owner, address spender) view returns (uint256)"
+            ],
+            wallet
+        );
 
-        const tx = {
-            to: randomToAddress,
-            value: ethers.parseEther(sendAmount.toString()),
-            gasLimit: 21000,
-            maxFeePerGas: ethers.parseUnits("10", "gwei"),
-            maxPriorityFeePerGas: ethers.parseUnits("5", "gwei")
-        };
-
-        process.emit('transfer:log', `Sending ${sendAmount} tokens${progressInfo}`);
-        const transaction = await wallet.sendTransaction(tx);
-        process.emit('transfer:success', `Transaction sent: ${sendAmount} tokens${progressInfo}`);
-        
-        const receipt = await transaction.wait();
-        process.emit('transfer:success', `Transaction confirmed: ${sendAmount} tokens${progressInfo}`);
-        
-        return transaction;
+        const amount = ethers.parseUnits("1000000", 18); // Approve 1M tokens
+        const tx = await tokenContract.approve(wallet.address, amount);
+        process.emit('transfer:log', `Approval TX: ${formatTxHash(tx.hash)}`);
+        return tx;
     } catch (error) {
-        if (error.message.includes('insufficient funds')) {
-            process.emit('transfer:error', `Insufficient funds for ${wallet.address}${progressInfo}`);
-            try {
-                const balance = await provider().getBalance(wallet.address);
-                const balanceInEth = ethers.formatEther(balance);
-                process.emit('transfer:log', `Balance: ${balanceInEth} ETH${progressInfo}`);
-            } catch (balanceError) {
-                // Ignore balance error
-            }
-        } else {
-            process.emit('transfer:error', `Error processing wallet: ${error.message}${progressInfo}`);
+        process.emit('transfer:error', `Approval failed: ${error.message}`);
+        return null;
+    }
+}
+
+// Function to send tokens
+async function sendTokens(wallet, recipient, amount) {
+    try {
+        const tokenContract = new ethers.Contract(
+            PING_TOKEN,
+            [
+                "function transfer(address to, uint256 amount) public returns (bool)",
+                "function balanceOf(address account) view returns (uint256)"
+            ],
+            wallet
+        );
+
+        // Convert amount to token decimals
+        const tokenAmount = ethers.parseUnits(amount, 18);
+        const tx = await tokenContract.transfer(recipient, tokenAmount);
+        
+        process.emit('transfer:log', `Send TX: ${formatTxHash(tx.hash)}`);
+        process.emit('transfer:log', `Amount: ${amount} ETH`);
+        process.emit('transfer:log', `To: ${formatAddress(recipient)}`);
+        
+        return tx;
+    } catch (error) {
+        process.emit('transfer:error', `Send failed: ${error.message}`);
+        return null;
+    }
+}
+
+// Function to process a single wallet
+export async function processWallet(wallet, amount, current, total) {
+    try {
+        // Get random recipient
+        const recipient = getRandomRecipient();
+        
+        // First approve tokens
+        const approveTx = await approveTokens(wallet);
+        if (approveTx) {
+            await approveTx.wait();
         }
+
+        // Then send tokens
+        const sendTx = await sendTokens(wallet, recipient, amount);
+        if (sendTx) {
+            await sendTx.wait();
+            process.emit('transfer:success', `Transaction confirmed: ${amount} ETH sent [${current}/${total}]`);
+        }
+    } catch (error) {
+        process.emit('transfer:error', `Transaction failed: ${error.message}`);
         throw error;
     }
+}
+
+// Helper function to format transaction hash
+function formatTxHash(hash) {
+    if (!hash) return '';
+    return `${hash.substring(0, 6)}...${hash.substring(hash.length - 4)}`;
+}
+
+// Helper function to format address
+function formatAddress(address) {
+    if (!address) return '';
+    return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
 }
 
 // Main function for standalone use
